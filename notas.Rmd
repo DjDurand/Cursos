@@ -1,0 +1,95 @@
+---
+title: "Notas"
+output:
+  html_document:
+    toc: false
+---
+
+```{r setup, include=FALSE, cache=FALSE}
+source("setup_knitr.R")
+```
+
+```{r pacotes, include=FALSE, eval=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(viridis)
+```
+
+```{r funcoes, include=FALSE}
+## Função para calcular a média final, arredondando para CIMA.
+## Ainda falta uma regra para decidir se notas como 68, 69, serão
+## arredondadas para 70.
+calc.media <- function(da, np){
+    ## da: data.frame com as colunas de notas
+    ## np: número de provas consideradas
+    db <- t(apply(da, 1, sort, decreasing = TRUE, na.last = TRUE))
+    db <- db[, 1:np]
+    res <- ceiling(rowSums(db, na.rm = TRUE)/np)
+    return(res)
+}
+
+## Função para definir a situação dos alunos:
+## Se x >= 70 "Ap"
+## Se 40 <= x < 70 "Ex"
+## Se x < 40 "Re"
+sit <- function(x){
+    ## x: médias finais
+    res <- rep("Ap", times = length(x))
+    res[x >= 40 & x < 70] <- "Ex"
+    res[x < 40] <- "Re"
+    return(res)
+}
+
+```
+
+## Escolha a aba de sua turma {.tabset}
+
+### CE001-MB
+
+- A média final (`M`) é a média das 7 maiores notas, **já arredondada
+  para cima**.
+- Situação (`Sit`): `Ap`: aprovado, `Ex`: exame, `Re`: reprovado
+
+
+### CE001-N
+
+- A média final (`M`) é a média das 6 maiores notas, **já arredondada
+  para cima**.
+- Situação (`Sit`): `Ap`: aprovado, `Ex`: exame, `Re`: reprovado
+- `EX`: nota do exame, `MF`: média final **já arredondada para cima**
+
+
+### CE003-MN
+
+- A média final (`M`) é a média das 6 maiores notas, **já arredondada
+  para cima**.
+- Situação (`Sit`): `Ap`: aprovado, `Ex`: exame, `Re`: reprovado
+- `EX`: nota do exame, `MF`: média final **já arredondada para cima**
+
+```{r notasmn}
+mn <- read.csv("misc/notas_ce003-MN.csv")
+mn <- mn[order(mn$Matricula), ]
+exame <- mn$EX
+mn <- mn[, -ncol(mn)]
+## Cálculo da média final
+mn <- cbind(mn, M = calc.media(da = mn[, -1], np = 6))
+## Arredonda para 70 aqueles com média final igual a 69
+mn$M[mn$M == 69] <- 70
+## Insere situação
+mn$Sit <- sit(x = mn$M)
+## Insere exame
+mn$EX <- exame
+## Calcula média final após exame
+mn$MF <- ifelse(mn$Sit == "Ex",
+               ceiling((mn$M + mn$EX)/2),
+               mn$M)
+## Resultado final
+mn$Resultado <- ifelse(mn$MF > 49, "Aprovado", "Reprovado")
+str(mn)
+table(mn$Sit)
+table(mn$Resultado)
+prop.table(table(mn$Resultado))
+kable(mn, row.names = FALSE)
+```
+
+```
